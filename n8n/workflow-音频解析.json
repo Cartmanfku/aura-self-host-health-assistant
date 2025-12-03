@@ -1,0 +1,407 @@
+{
+  "name": "workflow-音频解析",
+  "nodes": [
+    {
+      "parameters": {
+        "text": "=/no_think You are an expert extraction algorithm.\nOnly extract relevant information from the text: {{ $json.text }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n        \"type\": \"object\",\n        \"properties\": {\n                \"report_name\": {\n                        \"type\": \"string\",\n                        \"description\":\"Report name in English. If don't know, put Null instead.\"\n                },\n                \"report_date\": {\n                        \"type\": \"string\",\n                        \"description\":\"Report date in English. If don't know, put Current Date instead.\"\n                },                \n                \"report_summary\": {\n                        \"type\": \"string\",\n                        \"description\":\"Summarize this report in English. Less than 50 words.\"\n                },\n                \"medical_instructions\":{\n                        \"type\": \"string\",\n                        \"description\":\"Mainly medical instructions from this report.  If don't know, put Null instead.\"\n                },\n                \"medical_reminders\":{\n                        \"type\": \"string\",\n                        \"description\":\"Later medical reminders from this report, remind date and action. \"\n                },\n                \"report_type\":{\n                        \"type\": \"string\",\n                        \"description\":\"Categorize this report, enumerate in LAB_REPORT, MEDICINE, VOICE_DR, OTHERS.\"\n                }\n        }\n}",
+        "options": {
+          "systemPromptTemplate": "/no_think You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "e0ced1f3-461c-4a6e-a5d1-8b19dcf0b73f",
+      "name": "Information Extractor",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "OpenVINO/Qwen3-0.6B-fp16-ov",
+          "mode": "list",
+          "cachedResultName": "OpenVINO/Qwen3-0.6B-fp16-ov"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        176
+      ],
+      "id": "857032fb-ffb1-47f6-8b81-4eb77e8f7347",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "AJMSUghuENn1wSUS",
+          "name": "OpenAi - Qwen3-0.6B"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "上传诊疗记录音频",
+        "formDescription": "音频上传后自动解析需要1-2分钟，请耐心等候。",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "upload_audio",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".wav;.mp3",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "86c7c001-5944-4fa8-b085-e9c7a72644d9",
+      "name": "On form submission",
+      "webhookId": "cf692921-418d-4071-96c3-e866d2872caa"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "binaryPropertyName": "upload_audio",
+        "options": {
+          "encoding": "base64"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "8367cb48-de7b-440e-bc3f-36aeaf0a5944",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "753a8b51-34f6-4115-9bfe-efc8fac1877c",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "value": "medical_reports",
+          "mode": "list",
+          "cachedResultName": "medical_reports"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "report_date",
+              "value": "={{ $json.output.report_date }}"
+            },
+            {
+              "column": "report_summary",
+              "value": "={{ $json.output.report_summary }}"
+            },
+            {
+              "column": "report_name",
+              "value": "={{ $json.output.report_name }}"
+            },
+            {
+              "column": "medical_instructions",
+              "value": "={{ $json.output.medical_instructions }}"
+            },
+            {
+              "column": "medical_indications",
+              "value": "={{ $json.output.medical_indications }}"
+            },
+            {
+              "column": "medical_reminders",
+              "value": "={{ $json.output.medical_reminders }}"
+            },
+            {
+              "column": "report_type",
+              "value": "={{ $json.output.report_type }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        1648,
+        0
+      ],
+      "id": "7df9017b-c76e-4be5-b374-1b239b4b1044",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "mySql": {
+          "id": "nXbW0itVcMTfGL3H",
+          "name": "MySQL account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.2.24:8004/v3/audio/transcriptions",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "OpenVINO/whisper-tiny-int4-ov"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "a2696b59-2d54-4846-8e5b-04789c0ecc65",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b99870ce-d14e-4025-9c79-ffb2e14f269d",
+              "leftValue": "={{ $json.upload_audio.mimetype }}",
+              "rightValue": "audio/wav",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4d8cb14c-5748-43d0-97b4-7cc0e019c334",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=./{{ $json.upload_audio.filename }}",
+        "dataPropertyName": "upload_audio",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        464,
+        144
+      ],
+      "id": "a35bcef9-c769-448e-876a-238f8e188965",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y -i {{ $json.upload_audio.filename }} -ar 16000 -ac 1 -acodec pcm_s16le output_optimized.wav"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        672,
+        144
+      ],
+      "id": "05a32b96-0fbd-4f9b-a04a-b394f65472a7",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "fileSelector": "./output_optimized.wav",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        880,
+        144
+      ],
+      "id": "091e5e27-6bd1-47dc-919e-40bfc9815a9f",
+      "name": "Read/Write Files from Disk1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "527eb9f9-c23c-4e7f-a767-77caa0d48f10",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "84860e13c09b14fecbe1ffafcbead3bd1ee2203c3cf46672df46336fc158283d"
+  },
+  "id": "LAOb8iF7hfnAGdJZ",
+  "tags": []
+}

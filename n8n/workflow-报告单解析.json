@@ -1,0 +1,340 @@
+{
+  "name": "workflow-报告单解析",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Describe this image in details and extract all the text from the image.",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary",
+              "binaryImageDataKey": "=data"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        832,
+        0
+      ],
+      "id": "0379bac2-eecb-406e-9624-abf7afb13ef0",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "OpenVINO/Qwen2-VL-7B-Instruct-int4-ov",
+          "mode": "list",
+          "cachedResultName": "OpenVINO/Qwen2-VL-7B-Instruct-int4-ov"
+        },
+        "options": {
+          "maxTokens": 400
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        160
+      ],
+      "id": "179c0931-d998-44b3-98fe-1477694bb262",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "bb6eWVU9Z9GgWDzl",
+          "name": "OpenAi - Qwen2-VL-7B"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "=upload_image",
+        "options": {
+          "encoding": "base64"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "74958f5a-2e12-474d-beda-7d45439095f1",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "8ebce790-b077-451f-a1ae-e66c01f7c4a5",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "width": 480,
+        "height": 720,
+        "options": {
+          "format": "jpeg"
+        }
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "c2d1b6c8-2d59-48e2-a211-2205a900f5a2",
+      "name": "Edit Image"
+    },
+    {
+      "parameters": {
+        "text": "= /no_think You are an expert extraction algorithm.\nOnly extract relevant information from the text: {{ $json.text }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n        \"type\": \"object\",\n        \"properties\": {\n                \"report_name\": {\n                        \"type\": \"string\",\n                        \"description\":\"Report name in English. If don't know, put Null instead.\"\n                },\n                \"report_date\": {\n                        \"type\": \"string\",\n                        \"description\":\"Report date in English. If don't know, put Current Date instead.\"\n                },                \n                \"report_summary\": {\n                        \"type\": \"string\",\n                        \"description\":\"Summarize this report in English. Less than 50 words.\"\n                },\n                \"medical_instructions\":{\n                        \"type\": \"string\",\n                        \"description\":\"Mainly medical instructions from this report.  If don't know, put Null instead.\"\n                },\n                \"medical_reminders\":{\n                        \"type\": \"string\",\n                        \"description\":\"Later medical reminders from this report, remind date and action. \"\n                },\n                \"report_type\":{\n                        \"type\": \"string\",\n                        \"description\":\"Categorize this report, enumerate in LAB_REPORT, MEDICINE, VOICE_DR, OTHERS.\"\n                }\n        }\n}",
+        "options": {
+          "systemPromptTemplate": "/no_think You are an expert extraction algorithm.\nOnly extract relevant information from the text."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "1784df1c-bb34-44db-8d18-8e76e7da5894",
+      "name": "Information Extractor",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "OpenVINO/Qwen3-0.6B-fp16-ov",
+          "mode": "list",
+          "cachedResultName": "OpenVINO/Qwen3-0.6B-fp16-ov"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        208
+      ],
+      "id": "6fc41e0f-2307-4064-abe5-96f63cace82f",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "AJMSUghuENn1wSUS",
+          "name": "OpenAi - Qwen3-0.6B"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "上传报告单或者药品说明",
+        "formDescription": "图片上传后自动解析需要1-2分钟，请耐心等待。",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "upload_image",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".jpg;.png;.jpeg",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4396aff5-cec3-4e13-85f9-6bd3fd97e632",
+      "name": "On form submission",
+      "webhookId": "7d2a842a-4de7-4fff-8427-0eb48b964a9f"
+    },
+    {
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "value": "medical_reports",
+          "mode": "list",
+          "cachedResultName": "medical_reports"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "report_date",
+              "value": "={{ $json.output.report_date }}"
+            },
+            {
+              "column": "report_summary",
+              "value": "={{ $json.output.report_summary }}"
+            },
+            {
+              "column": "report_name",
+              "value": "={{ $json.output.report_name }}"
+            },
+            {
+              "column": "medical_instructions",
+              "value": "={{ $json.output.medical_instructions }}"
+            },
+            {
+              "column": "medical_indications",
+              "value": "={{ $json.output.medical_indications }}"
+            },
+            {
+              "column": "medical_reminders",
+              "value": "={{ $json.output.medical_reminders }}"
+            },
+            {
+              "column": "report_type",
+              "value": "={{ $json.output.report_type }}"
+            }
+          ]
+        },
+        "options": {
+          "replaceEmptyStrings": false
+        }
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        1536,
+        0
+      ],
+      "id": "50271f0a-96fb-421b-b840-ba105f9ef0a9",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "mySql": {
+          "id": "nXbW0itVcMTfGL3H",
+          "name": "MySQL account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Edit Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9ca3bd79-1f5b-407c-b612-2d084ae0f24e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "84860e13c09b14fecbe1ffafcbead3bd1ee2203c3cf46672df46336fc158283d"
+  },
+  "id": "NVyUaDMOOFA9EUHJ",
+  "tags": []
+}

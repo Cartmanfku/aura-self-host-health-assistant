@@ -1,0 +1,368 @@
+{
+  "name": "workflow-生成病例",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "medical_reports",
+          "mode": "list",
+          "cachedResultName": "medical_reports"
+        },
+        "returnAll": true,
+        "sort": {
+          "values": [
+            {
+              "column": "report_date",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {
+          "selectDistinct": true
+        }
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5453d14e-4df9-426c-ada0-71cead68b2f7",
+      "name": "Select rows from a table",
+      "credentials": {
+        "mySql": {
+          "id": "nXbW0itVcMTfGL3H",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "895b8f79-aa11-4161-af94-c402af1fc0d3",
+              "name": "merge_report",
+              "value": "=[{{ $json.report_date }}] {{ $json.report_name }}:{{ $json.report_summary }}.{{ $json.medical_indications }},{{ $json.medical_instructions }}.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "6614f012-2dc5-4d3f-9459-57080f228614",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "concatenate",
+              "field": "merge_report",
+              "separateBy": "\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "c6862a42-4de6-420e-bfe0-7adbe64905a8",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=References: {{ $json.concatenated_merge_report }} . /no_think\n\nSummarzie user's profile in timeline.用中文回答",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "ddbe317f-0717-4222-8114-1271be0631b3",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "OpenVINO/Qwen3-0.6B-fp16-ov",
+          "mode": "list",
+          "cachedResultName": "OpenVINO/Qwen3-0.6B-fp16-ov"
+        },
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        208
+      ],
+      "id": "69779a53-714a-4d0e-a5d5-cc13a4807e4c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "AJMSUghuENn1wSUS",
+          "name": "OpenAi - Qwen3-0.6B"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "6c463884-4585-49cf-8bce-54550d72a219",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "db6b8072-a1e4-4d93-b593-cc7a359bcd4f",
+      "name": "Webhook",
+      "webhookId": "6c463884-4585-49cf-8bce-54550d72a219"
+    },
+    {
+      "parameters": {
+        "html": "{{ $json.text.replace(\"```html\",\"\").replace(\"```\",\"\") }}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1744,
+        16
+      ],
+      "id": "d1413a78-5f0d-471a-b4bc-261e32156668",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1984,
+        16
+      ],
+      "id": "d1d769a1-5c22-4d38-b51c-7e55f0482866",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "54f4809b-460f-4892-8994-fb9e9289723b",
+              "leftValue": "={{ $json.report_name }}",
+              "rightValue": "Null",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "892c09ab-8d5a-48de-a167-adf787fd3373",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Design and generate an elegant card in html to display input content:\n{{ $json.text }}\n\nstart with \"```html\"",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "7f40822e-ffac-438e-8b54-1efa7b25bb40",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "Qwen/Qwen2.5-Coder-3B-Instruct-GPTQ-Int8",
+          "mode": "list",
+          "cachedResultName": "Qwen/Qwen2.5-Coder-3B-Instruct-GPTQ-Int8"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        208
+      ],
+      "id": "2a24512c-2f82-4c75-821a-012672bca5f8",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ykZ31XMPrMiYXvyS",
+          "name": "OpenAi - Qwen2.5-Coder-3B"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7b3c0b73-eac4-4599-9733-3f65816b2054",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "84860e13c09b14fecbe1ffafcbead3bd1ee2203c3cf46672df46336fc158283d"
+  },
+  "id": "06s5pEC1AGCKG4Zi",
+  "tags": []
+}

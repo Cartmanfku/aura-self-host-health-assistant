@@ -1,0 +1,368 @@
+{
+  "name": "workflow-生成图表",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "medical_reports",
+          "mode": "list",
+          "cachedResultName": "medical_reports"
+        },
+        "returnAll": true,
+        "sort": {
+          "values": [
+            {
+              "column": "report_date",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {
+          "selectDistinct": true
+        }
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "fe5cbb5b-790b-4e02-a38d-5221dfecc8a2",
+      "name": "Select rows from a table",
+      "credentials": {
+        "mySql": {
+          "id": "nXbW0itVcMTfGL3H",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "895b8f79-aa11-4161-af94-c402af1fc0d3",
+              "name": "merge_report",
+              "value": "=[{{ $json.report_date }}] {{ $json.medical_indications }},{{ $json.medical_instructions }},{{ $json.medical_reminders }}.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "19c1953a-d220-49dc-a688-1a71f5d07f12",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "concatenate",
+              "field": "merge_report",
+              "separateBy": "\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "c139ff4e-da46-422d-8507-c6cf9f21e700",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=References: {{ $json.concatenated_merge_report }} .\n\nFind mainly data trends to make a table from references. 用中文回答",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "ecf0f1df-8ab3-400b-95de-6e87cff6b0a3",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "OpenVINO/Qwen3-0.6B-fp16-ov",
+          "mode": "list",
+          "cachedResultName": "OpenVINO/Qwen3-0.6B-fp16-ov"
+        },
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        208
+      ],
+      "id": "e416aa5c-1455-483f-8c76-a6b3693ca709",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "AJMSUghuENn1wSUS",
+          "name": "OpenAi - Qwen3-0.6B"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "ab65e937-ea02-4b01-bfa3-12f0aea96f23",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8fb4d660-2813-46d4-a09c-1a2ab84717ef",
+      "name": "Webhook",
+      "webhookId": "ab65e937-ea02-4b01-bfa3-12f0aea96f23"
+    },
+    {
+      "parameters": {
+        "html": "{{ $json.text.replace(\"```html\",\"\").replace(\"```\",\"\") }}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1744,
+        16
+      ],
+      "id": "4e4b9c68-abdd-4594-8160-ef18b99e929f",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1984,
+        16
+      ],
+      "id": "2dad59bc-b4b1-4716-8123-98bc4c5ca3c8",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "54f4809b-460f-4892-8994-fb9e9289723b",
+              "leftValue": "={{ $json.report_name }}",
+              "rightValue": "Null",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "16ea09aa-6e80-4728-857c-ac4931747c19",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Design and generate E-charts in html, try to visualize data from content, you could mock some data if there is no available one:\n{{ $json.text.replace(/<think[\\^>]*>.*?<\\/think>/gs, '').trim() }}\n\nstart with \"```html\"",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "c57aea3d-c80b-4a1e-ac09-c03010b20a9e",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "Qwen/Qwen2.5-Coder-3B-Instruct-GPTQ-Int8",
+          "mode": "list",
+          "cachedResultName": "Qwen/Qwen2.5-Coder-3B-Instruct-GPTQ-Int8"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        208
+      ],
+      "id": "9181e32e-02f7-4974-9b2d-1092dcc2e41b",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ykZ31XMPrMiYXvyS",
+          "name": "OpenAi - Qwen2.5-Coder-3B"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "596c61b0-cb71-4491-b01c-c5f017e8c4da",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "84860e13c09b14fecbe1ffafcbead3bd1ee2203c3cf46672df46336fc158283d"
+  },
+  "id": "HdY2mbSTh0BP3lXp",
+  "tags": []
+}
