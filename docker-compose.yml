@@ -1,0 +1,103 @@
+services:
+  model-server-1:
+    image: openvino/model_server:latest-gpu
+    container_name: model_server_1
+    ports:
+      - "8003:8000"
+    volumes:
+      - D:\cursor-project\models:/models:rw
+    command: >
+      --source_model OpenVINO/Qwen3-0.6B-fp16-ov
+      --model_repository_path models
+      --task text_generation
+      --rest_port 8000
+      --target_device CPU
+      --cache_size 2
+
+  model-server-2:
+    image: openvino/model_server:weekly
+    container_name: model_server_2
+    ports:
+      - "8004:8000" # 修改端口以避免冲突
+    volumes:
+      - D:\cursor-project\models:/models:rw
+    command: >
+      --source_model OpenVINO/whisper-tiny-int4-ov
+      --model_repository_path models
+      --task speech2text
+      --rest_port 8000
+
+  model-server-3:
+    image: openvino/model_server:latest-gpu
+    container_name: model_server_3
+    ports:
+      - "8002:8000" # 修改端口以避免冲突
+    volumes:
+      - D:\cursor-project\models:/models:rw
+    cpuset: "0-6"
+    environment:
+      - OMP_NUM_THREADS=4
+      - OPENVINO_NUM_STREAMS=1
+      - OPENVINO_LOG_LEVEL=INFO
+    deploy:
+      resources:
+        limits:
+          cpus: '7'
+          memory: 16g
+        reservations:
+          cpus: '7'
+          memory: 14g
+    command: >
+      --source_model OpenVINO/Qwen2-VL-7B-Instruct-int4-ov
+      --model_repository_path models
+      --task text_generation
+      --rest_port 8000
+      --target_device CPU
+      --cache_size 1
+
+  model-server-4:
+    image: vllm/vllm-openai:latest
+    container_name: model_server_4
+    ports:
+      - "8011:8000"
+    volumes:
+      - D:\cursor-project\models\Qwen\Qwen2.5-Coder-3B-Instruct-GPTQ-Int8:/app/model:rw
+    environment:
+      - VLLM_USE_MODELSCOPE=true
+      - VLLM_GPU_MEMORY_UTILIZATION=0.8
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      --model /app/model
+      --served-model-name Qwen/Qwen2.5-Coder-3B-Instruct-GPTQ-Int8
+      --gpu-memory-utilization 0.8
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql-container
+    ports:
+      - "3306:3306"
+    volumes:
+      - D:\cursor-project\mysql:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=reports_db
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - D:\cursor-project\n8n:/home/node/.n8n
+    environment:
+      - GENERIC_TIMEZONE=Asia/Shanghai
+      - TZ=Asia/Shanghai
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
