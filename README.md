@@ -87,7 +87,7 @@ python -m http.server 8000
 
 
 ## 技术架构
-<img src="架构图.png" alt="图片描述" width="720">
+<img src="Aura Architecture.png" alt="图片描述" width="720">
 
 
 
